@@ -32,6 +32,23 @@ export const listings = pgTable("listings", {
 
   status: text("status").notNull().default("active"),
 });
+export const offers = pgTable("offers", {
+  id: serial("id").primaryKey(),
+
+  listingId: integer("listing_id")
+    .notNull()
+    .references(() => listings.id),
+
+  companyId: integer("company_id")
+    .notNull()
+    .references(() => users.id),
+
+  offeredPrice: real("offered_price").notNull(),
+
+  message: text("message"),
+
+  status: text("status").notNull().default("pending"),
+});
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -47,6 +64,17 @@ export const insertListingSchema = createInsertSchema(listings).pick({
   price: true,
   status: true,
 });
+export const insertOfferSchema = createInsertSchema(offers).pick({
+  listingId: true,
+  companyId: true,
+  offeredPrice: true,
+  message: true,
+  status: true,
+});
+
+export type InsertOffer = z.infer<typeof insertOfferSchema>;
+
+export type Offer = typeof offers.$inferSelect;
 
 export type InsertListing = z.infer<typeof insertListingSchema>;
 
