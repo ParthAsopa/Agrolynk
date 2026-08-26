@@ -17,6 +17,10 @@ export interface IStorage {
   createListing(listing: InsertListing): Promise<Listing>;
 
   getListingsByFarmer(farmerId: number): Promise<Listing[]>;
+  updateListing(
+  id: number,
+  updates: Partial<InsertListing>,
+): Promise<Listing | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -84,6 +88,27 @@ export class MemStorage implements IStorage {
       (listing) => listing.farmerId === farmerId,
     );
   }
+  async updateListing(
+  id: number,
+  updates: Partial<InsertListing>,
+): Promise<Listing | undefined> {
+  const existingListing = this.listings.get(id);
+
+  if (!existingListing) {
+    return undefined;
+  }
+
+  const updatedListing: Listing = {
+    ...existingListing,
+    ...updates,
+    id: existingListing.id,
+    farmerId: existingListing.farmerId,
+  };
+
+  this.listings.set(id, updatedListing);
+
+  return updatedListing;
+}
 }
 
 export const storage = new MemStorage();

@@ -29,9 +29,11 @@ const createListingSchema = z.object({
   price: z.coerce.number().positive(),
 });
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  // API Routes
+const updateListingStatusSchema = z.object({
+  status: z.enum(["active", "inactive", "sold"]),
+});
 
+export async function registerRoutes(app: Express): Promise<Server> {
   // Farmer Buy Recommendations
   app.get("/api/farmer/buy", (req: Request, res: Response) => {
     try {
@@ -85,31 +87,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-  app.get("/api/listings/mine", async (req: Request, res: Response) => {
-  try {
-    const farmerId = z.coerce.number().int().positive().safeParse(
-      req.query.farmerId,
-    );
 
-    if (!farmerId.success) {
-      return res.status(400).json({
-        error: "Invalid farmerId",
+  // Get Farmer's Listings
+  app.get("/api/listings/mine", async (req: Request, res: Response) => {
+    try {
+      const farmerId = z.coerce
+        .number()
+        .int()
+        .positive()
+        .safeParse(req.query.farmerId);
+
+      if (!farmerId.success) {
+        return res.status(400).json({
+          error: "Invalid farmerId",
+        });
+      }
+
+      const listings = await storage.getListingsByFarmer(
+        farmerId.data,
+      );
+
+      return res.status(200).json(listings);
+    } catch (error) {
+      console.error("Error in GET /api/listings/mine:", error);
+
+      return res.status(500).json({
+        error: "Internal server error",
       });
     }
+  });
 
-    const listings = await storage.getListingsByFarmer(
-      farmerId.data,
-    );
+  // Update Farmer Listing
+  app.patch("/api/listings/:id", async (req: Request, res: Response) => {
+    try {
+      const listingId = z.coerce
+        .number()
+        .int()
+        .positive()
+        .safeParse(req.params.id);
 
-    return res.status(200).json(listings);
-  } catch (error) {
-    console.error("Error in GET /api/listings/mine:", error);
+      if (!listingId.success) {
+        return res.status(400).json({
+          error: "Invalid listing id",
+        });
+      }
 
-    return res.status(500).json({
-      error: "Internal server error",
-    });
-  }
-});
+      const result = createListingSchema.partial().safeParse(req.body);
+
+      if (!result.success) {
+        return res.status(400).json({
+          error: "Invalid listing data",
+          details: result.error.format(),
+        });
+      }
+
+      const listing = await storage.updateListing(
+        listingId.data,
+        result.data,
+      );
+
+      if (!listing) {
+        return res.status(404).json({
+          error: "Listing not found",
+        });
+      }
+
+      return res.status(200).json(listing);
+    } catch (error) {
+      console.error("Error in PATCH /api/listings/:id:", error);
+
+      return res.status(500).json({
+        error: "Internal server error",
+      });
+    }
+  });
+
+  // Update Listing Status
+  app.patch(
+    "/api/listings/:id/status",
+    async (req: Request, res: Response) => {
+      try {
+        const listingId = z.coerce
+          .number()
+          .int()
+          .positive()
+          .safeParse(req.params.id);
+
+        if (!listingId.success) {
+          return res.status(400).json({
+            error: "Invalid listing id",
+          });
+        }
+
+        const result = updateListingStatusSchema.safeParse(req.body);
+
+        if (!result.success) {
+          return res.status(400).json({
+            error: "Invalid status",
+            details: result.error.format(),
+          });
+        }
+
+        const listing = await storage.updateListing(
+          listingId.data,
+          result.data,
+        );
+
+        if (!listing) {
+          return res.status(404).json({
+            error: "Listing not found",
+          });
+        }
+
+        return res.status(200).json(listing);
+      } catch (error) {
+        console.error(
+          "Error in PATCH /api/listings/:id/status:",
+          error,
+        );
+
+        return res.status(500).json({
+          error: "Internal server error",
+        });
+      }
+    },
+  );
 
   // Farmer Sell Market Insights
   app.get("/api/farmer/sell", (req: Request, res: Response) => {
