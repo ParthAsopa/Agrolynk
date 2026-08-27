@@ -21,6 +21,8 @@ import {
   queryClient,
 } from "@/lib/queryClient";
 
+import { useLanguage } from "@/i18n/LanguageContext";
+
 type Listing = {
   id: number;
   crop: string;
@@ -42,6 +44,8 @@ type Offer = {
 };
 
 export default function FarmerDashboard() {
+  const { t } = useLanguage();
+
   const [form, setForm] = useState({
     farmerId: "1",
     crop: "",
@@ -54,10 +58,7 @@ export default function FarmerDashboard() {
 
   const [message, setMessage] = useState("");
 
-  // --------------------------------
-  // Get Farmer Listings
-  // --------------------------------
-
+  // Get farmer listings
   const {
     data: listings = [],
     isLoading: listingsLoading,
@@ -66,10 +67,7 @@ export default function FarmerDashboard() {
     queryKey: ["/api/listings/mine?farmerId=1"],
   });
 
-  // --------------------------------
-  // Get Offers for Each Listing
-  // --------------------------------
-
+  // Get offers for each listing
   const offerQueries = useQueries({
     queries: listings.map((listing) => ({
       queryKey: [`/api/listings/${listing.id}/offers`],
@@ -85,10 +83,7 @@ export default function FarmerDashboard() {
     })),
   });
 
-  // --------------------------------
-  // Create Listing
-  // --------------------------------
-
+  // Create listing
   const createListing = useMutation({
     mutationFn: async () => {
       return apiRequest("POST", "/api/listings", {
@@ -101,8 +96,9 @@ export default function FarmerDashboard() {
         price: Number(form.price),
       });
     },
+
     onSuccess: async () => {
-      setMessage("Listing created successfully!");
+      setMessage(t.messages.listingCreated);
 
       setForm({
         farmerId: "1",
@@ -114,17 +110,17 @@ export default function FarmerDashboard() {
         price: "",
       });
 
-      // Refresh My Listings
       await queryClient.invalidateQueries({
         queryKey: ["/api/listings/mine?farmerId=1"],
       });
     },
 
     onError: () => {
-      setMessage("Failed to create listing.");
+      setMessage(t.messages.listingFailed);
     },
   });
 
+  // Update offer status
   const updateOfferStatus = useMutation({
     mutationFn: async ({
       offerId,
@@ -144,12 +140,14 @@ export default function FarmerDashboard() {
       await queryClient.invalidateQueries({
         queryKey: ["/api/listings/mine?farmerId=1"],
       });
+
+      listings.forEach((listing) => {
+        queryClient.invalidateQueries({
+          queryKey: [`/api/listings/${listing.id}/offers`],
+        });
+      });
     },
   });
-
-  // --------------------------------
-  // Form Field Update
-  // --------------------------------
 
   const updateField = (
     field: string,
@@ -161,16 +159,36 @@ export default function FarmerDashboard() {
     }));
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "pending":
+        return t.farmer.pending;
+
+      case "accepted":
+        return t.farmer.accepted;
+
+      case "rejected":
+        return t.farmer.rejected;
+
+      case "active":
+        return t.farmer.active;
+
+      case "sold":
+        return t.farmer.sold;
+
+      default:
+        return status;
+    }
+  };
+
   return (
     <div className="container mx-auto space-y-6 p-6">
 
-      {/* ================================
-          Dashboard Header
-      ================================= */}
+      {/* Dashboard Header */}
 
       <div>
         <h1 className="text-3xl font-bold">
-          Farmer Dashboard
+          {t.farmer.dashboard}
         </h1>
 
         <p className="text-muted-foreground">
@@ -178,14 +196,12 @@ export default function FarmerDashboard() {
         </p>
       </div>
 
-      {/* ================================
-          Create Listing
-      ================================= */}
+      {/* Create Listing */}
 
       <Card>
         <CardHeader>
           <CardTitle>
-            Create Waste Listing
+            {t.farmer.createListing}
           </CardTitle>
         </CardHeader>
 
@@ -195,7 +211,7 @@ export default function FarmerDashboard() {
             {/* Crop */}
 
             <div className="space-y-2">
-              <Label>Crop</Label>
+              <Label>{t.farmer.crop}</Label>
 
               <Input
                 value={form.crop}
@@ -212,7 +228,7 @@ export default function FarmerDashboard() {
             {/* Waste Type */}
 
             <div className="space-y-2">
-              <Label>Waste Type</Label>
+              <Label>{t.farmer.wasteType}</Label>
 
               <Input
                 value={form.wasteType}
@@ -229,7 +245,7 @@ export default function FarmerDashboard() {
             {/* Quantity */}
 
             <div className="space-y-2">
-              <Label>Quantity</Label>
+              <Label>{t.farmer.quantity}</Label>
 
               <Input
                 type="number"
@@ -247,7 +263,7 @@ export default function FarmerDashboard() {
             {/* Unit */}
 
             <div className="space-y-2">
-              <Label>Unit</Label>
+              <Label>{t.farmer.unit}</Label>
 
               <Input
                 value={form.unit}
@@ -264,7 +280,7 @@ export default function FarmerDashboard() {
             {/* Location */}
 
             <div className="space-y-2">
-              <Label>Location</Label>
+              <Label>{t.farmer.location}</Label>
 
               <Input
                 value={form.location}
@@ -281,7 +297,7 @@ export default function FarmerDashboard() {
             {/* Price */}
 
             <div className="space-y-2">
-              <Label>Asking Price</Label>
+              <Label>{t.farmer.askingPrice}</Label>
 
               <Input
                 type="number"
@@ -306,7 +322,7 @@ export default function FarmerDashboard() {
           >
             {createListing.isPending
               ? "Creating..."
-              : "Create Listing"}
+              : t.farmer.createListingButton}
           </Button>
 
           {message && (
@@ -317,33 +333,29 @@ export default function FarmerDashboard() {
         </CardContent>
       </Card>
 
-      {/* ================================
-          My Listings + Received Offers
-      ================================= */}
+      {/* My Listings + Received Offers */}
 
       <div className="grid gap-6 md:grid-cols-2">
 
-        {/* ================================
-            My Listings
-        ================================= */}
+        {/* My Listings */}
 
         <Card>
           <CardHeader>
             <CardTitle>
-              My Listings
+              {t.farmer.myListings}
             </CardTitle>
           </CardHeader>
 
           <CardContent>
             {listingsLoading && (
               <p className="text-muted-foreground">
-                Loading your listings...
+                {t.farmer.loadingListings}
               </p>
             )}
 
             {listingsError && (
               <p className="text-destructive">
-                Failed to load listings.
+                {t.messages.offersFailed}
               </p>
             )}
 
@@ -351,7 +363,7 @@ export default function FarmerDashboard() {
               !listingsError &&
               listings.length === 0 && (
                 <p className="text-muted-foreground">
-                  You have no listings yet.
+                  {t.farmer.noListings}
                 </p>
               )}
 
@@ -365,7 +377,6 @@ export default function FarmerDashboard() {
                       key={listing.id}
                       className="rounded-lg border p-4"
                     >
-
                       <div className="flex items-center justify-between">
 
                         <div>
@@ -378,30 +389,29 @@ export default function FarmerDashboard() {
                           </p>
                         </div>
 
-                        <span className="text-sm font-medium capitalize">
-                          {listing.status}
+                        <span className="text-sm font-medium">
+                          {getStatusLabel(
+                            listing.status,
+                          )}
                         </span>
                       </div>
 
                       <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
 
                         <p>
-                          Quantity:{" "}
+                          {t.farmer.quantity}:{" "}
                           {listing.quantity}{" "}
                           {listing.unit}
                         </p>
 
                         <p>
-                          Price: ₹{listing.price}
+                          {t.farmer.askingPrice}: ₹
+                          {listing.price}
                         </p>
 
                         <p>
-                          Location:{" "}
+                          {t.farmer.location}:{" "}
                           {listing.location}
-                        </p>
-
-                        <p>
-                          Listing ID: #{listing.id}
                         </p>
 
                       </div>
@@ -413,14 +423,12 @@ export default function FarmerDashboard() {
           </CardContent>
         </Card>
 
-        {/* ================================
-            Received Offers
-        ================================= */}
+        {/* Received Offers */}
 
         <Card>
           <CardHeader>
             <CardTitle>
-              Received Offers
+              {t.farmer.receivedOffers}
             </CardTitle>
           </CardHeader>
 
@@ -428,14 +436,14 @@ export default function FarmerDashboard() {
 
             {listingsLoading && (
               <p className="text-muted-foreground">
-                Loading offers...
+                {t.farmer.loadingOffers}
               </p>
             )}
 
             {!listingsLoading &&
               listings.length === 0 && (
                 <p className="text-muted-foreground">
-                  Create a listing to receive offers.
+                  {t.farmer.noOffers}
                 </p>
               )}
 
@@ -458,8 +466,7 @@ export default function FarmerDashboard() {
                             className="rounded-lg border p-4"
                           >
                             <p className="text-sm text-muted-foreground">
-                              Loading offers for{" "}
-                              {listing.crop}...
+                              {t.farmer.loadingOffers}
                             </p>
                           </div>
                         );
@@ -472,8 +479,7 @@ export default function FarmerDashboard() {
                             className="rounded-lg border p-4"
                           >
                             <p className="text-sm text-destructive">
-                              Failed to load offers
-                              for {listing.crop}.
+                              {t.messages.offersFailed}
                             </p>
                           </div>
                         );
@@ -490,7 +496,7 @@ export default function FarmerDashboard() {
                             </p>
 
                             <p className="mt-1 text-sm text-muted-foreground">
-                              No offers received yet.
+                              {t.farmer.noOffers}
                             </p>
                           </div>
                         );
@@ -501,16 +507,11 @@ export default function FarmerDashboard() {
                           key={listing.id}
                           className="space-y-3"
                         >
-
                           <div>
                             <h3 className="font-semibold">
                               {listing.crop} -{" "}
                               {listing.wasteType}
                             </h3>
-
-                            <p className="text-xs text-muted-foreground">
-                              Listing #{listing.id}
-                            </p>
                           </div>
 
                           {offers.map(
@@ -519,7 +520,6 @@ export default function FarmerDashboard() {
                                 key={offer.id}
                                 className="rounded-lg border p-4"
                               >
-
                                 <div className="flex items-center justify-between">
 
                                   <div>
@@ -529,16 +529,17 @@ export default function FarmerDashboard() {
                                     </p>
 
                                     <p className="text-sm text-muted-foreground">
-                                      Offered Price:
-                                      ₹
+                                      {t.farmer.askingPrice}: ₹
                                       {
                                         offer.offeredPrice
                                       }
                                     </p>
                                   </div>
 
-                                  <span className="text-sm font-medium capitalize">
-                                    {offer.status}
+                                  <span className="text-sm font-medium">
+                                    {getStatusLabel(
+                                      offer.status,
+                                    )}
                                   </span>
 
                                 </div>
@@ -548,36 +549,52 @@ export default function FarmerDashboard() {
                                     {offer.message}
                                   </p>
                                 )}
-                                {offer.status === "pending" && (
-    <div className="mt-4 flex gap-2">
-    <Button
-      size="sm"
-      onClick={() =>
-        updateOfferStatus.mutate({
-          offerId: offer.id,
-          status: "accepted",
-        })
-      }
-      disabled={updateOfferStatus.isPending}
-    >
-      Accept
-    </Button>
 
-    <Button
-      size="sm"
-      variant="outline"
-      onClick={() =>
-        updateOfferStatus.mutate({
-          offerId: offer.id,
-          status: "rejected",
-        })
-      }
-      disabled={updateOfferStatus.isPending}
-    >
-      Reject
-    </Button>
-  </div>
-)}
+                                {offer.status ===
+                                  "pending" && (
+                                  <div className="mt-4 flex gap-2">
+
+                                    <Button
+                                      size="sm"
+                                      onClick={() =>
+                                        updateOfferStatus.mutate(
+                                          {
+                                            offerId:
+                                              offer.id,
+                                            status:
+                                              "accepted",
+                                          },
+                                        )
+                                      }
+                                      disabled={
+                                        updateOfferStatus.isPending
+                                      }
+                                    >
+                                      {t.farmer.accept}
+                                    </Button>
+
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() =>
+                                        updateOfferStatus.mutate(
+                                          {
+                                            offerId:
+                                              offer.id,
+                                            status:
+                                              "rejected",
+                                          },
+                                        )
+                                      }
+                                      disabled={
+                                        updateOfferStatus.isPending
+                                      }
+                                    >
+                                      {t.farmer.reject}
+                                    </Button>
+
+                                  </div>
+                                )}
 
                               </div>
                             ),
