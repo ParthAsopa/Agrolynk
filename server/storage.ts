@@ -1,22 +1,30 @@
 import {
   users,
   companyProducts,
+  companyOrders,
   type User,
   type InsertUser,
   type CompanyProduct,
   type InsertCompanyProduct,
+  type CompanyOrder,
+  type InsertCompanyOrder,
 } from "@shared/schema";
 
-// modify the interface with any CRUD methods
-// you might need
+// =========================
+// Storage Interface
+// =========================
 
 export interface IStorage {
   // User methods
   getUser(id: number): Promise<User | undefined>;
+
   getUserByUsername(
     username: string,
   ): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+
+  createUser(
+    user: InsertUser,
+  ): Promise<User>;
 
   // Company Product methods
   createCompanyProduct(
@@ -30,21 +38,42 @@ export interface IStorage {
   getCompanyProduct(
     id: number,
   ): Promise<CompanyProduct | undefined>;
+
+  // Company Order methods
+  createCompanyOrder(
+    order: InsertCompanyOrder,
+  ): Promise<CompanyOrder>;
+
+  getCompanyOrders(
+    companyId: number,
+  ): Promise<CompanyOrder[]>;
+
+  getCompanyOrder(
+    id: number,
+  ): Promise<CompanyOrder | undefined>;
 }
+
+// =========================
+// Memory Storage
+// =========================
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private companyProducts: Map<number, CompanyProduct>;
+  private companyOrders: Map<number, CompanyOrder>;
 
   private userCurrentId: number;
   private companyProductCurrentId: number;
+  private companyOrderCurrentId: number;
 
   constructor() {
     this.users = new Map();
     this.companyProducts = new Map();
+    this.companyOrders = new Map();
 
     this.userCurrentId = 1;
     this.companyProductCurrentId = 1;
+    this.companyOrderCurrentId = 1;
   }
 
   // =========================
@@ -60,8 +89,11 @@ export class MemStorage implements IStorage {
   async getUserByUsername(
     username: string,
   ): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
+    return Array.from(
+      this.users.values(),
+    ).find(
+      (user) =>
+        user.username === username,
     );
   }
 
@@ -71,11 +103,13 @@ export class MemStorage implements IStorage {
     const id = this.userCurrentId++;
 
     const user: User = {
-  id,
-  username: insertUser.username,
-  password: insertUser.password,
-  role: insertUser.role ?? "farmer",
-};
+      id,
+      username: insertUser.username,
+      password: insertUser.password,
+      role:
+        insertUser.role ??
+        "farmer",
+    };
 
     this.users.set(id, user);
 
@@ -89,20 +123,24 @@ export class MemStorage implements IStorage {
   async createCompanyProduct(
     product: InsertCompanyProduct,
   ): Promise<CompanyProduct> {
-    const id = this.companyProductCurrentId++;
+    const id =
+      this.companyProductCurrentId++;
 
     const companyProduct: CompanyProduct = {
-  id,
-  companyId: product.companyId,
-  category: product.category,
-  name: product.name,
-  price: product.price,
-  quantity: product.quantity,
-  description: product.description,
-  manufacturer: product.manufacturer ?? null,
-  specifications: product.specifications ?? null,
-  imageUrl: product.imageUrl ?? null,
-};
+      id,
+      companyId: product.companyId,
+      category: product.category,
+      name: product.name,
+      price: product.price,
+      quantity: product.quantity,
+      description: product.description,
+      manufacturer:
+        product.manufacturer ?? null,
+      specifications:
+        product.specifications ?? null,
+      imageUrl:
+        product.imageUrl ?? null,
+    };
 
     this.companyProducts.set(
       id,
@@ -128,6 +166,57 @@ export class MemStorage implements IStorage {
   ): Promise<CompanyProduct | undefined> {
     return this.companyProducts.get(id);
   }
+
+  // =========================
+  // Company Order methods
+  // =========================
+
+  async createCompanyOrder(
+    order: InsertCompanyOrder,
+  ): Promise<CompanyOrder> {
+    const id =
+      this.companyOrderCurrentId++;
+
+    const companyOrder: CompanyOrder = {
+      id,
+      companyId: order.companyId,
+      crop: order.crop,
+      quantity: order.quantity,
+      gradeQuality: order.gradeQuality,
+      totalCost: order.totalCost,
+      status:
+        order.status ?? "pending",
+    };
+
+    this.companyOrders.set(
+      id,
+      companyOrder,
+    );
+
+    return companyOrder;
+  }
+
+  async getCompanyOrders(
+    companyId: number,
+  ): Promise<CompanyOrder[]> {
+    return Array.from(
+      this.companyOrders.values(),
+    ).filter(
+      (order) =>
+        order.companyId === companyId,
+    );
+  }
+
+  async getCompanyOrder(
+    id: number,
+  ): Promise<CompanyOrder | undefined> {
+    return this.companyOrders.get(id);
+  }
 }
 
-export const storage = new MemStorage();
+// =========================
+// Storage instance
+// =========================
+
+export const storage =
+  new MemStorage();
