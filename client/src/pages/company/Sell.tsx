@@ -1,14 +1,14 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+
 import {
-  Truck,
   Leaf,
   Zap,
   Droplets,
   Hammer,
-  ArrowRight,
   Plus,
   X,
   Check,
@@ -53,62 +53,82 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 
 // =========================
+// Constants
+// =========================
+
+const productCategories = [
+  "seeds",
+  "fertilizers",
+  "pesticides",
+  "instruments",
+] as const;
+
+type ProductCategory = (typeof productCategories)[number];
+
+// =========================
 // Form Schema
 // =========================
 
 const formSchema = z.object({
-  category: z.string().min(1, {
-    message: "Please select a category",
+  category: z.enum(productCategories),
+
+  name: z
+    .string()
+    .trim()
+    .min(3, {
+      message: "Name must be at least 3 characters",
+    }),
+
+  price: z.coerce.number().positive({
+    message: "Price must be greater than 0",
   }),
 
-  name: z.string().min(3, {
-    message: "Name must be at least 3 characters",
+  quantity: z.coerce.number().positive({
+    message: "Quantity must be greater than 0",
   }),
 
-  price: z.coerce.number().min(1, {
-    message: "Price must be at least 1",
-  }),
-
-  quantity: z.coerce.number().min(1, {
-    message: "Quantity must be at least 1",
-  }),
-
-  description: z.string().min(10, {
-    message: "Description must be at least 10 characters",
-  }),
+  description: z
+    .string()
+    .trim()
+    .min(10, {
+      message: "Description must be at least 10 characters",
+    }),
 
   manufacturer: z
     .string()
-    .min(2, {
-      message: "Manufacturer name is required",
-    })
+    .trim()
+    .transform((value) => value || undefined)
     .optional(),
 
-  specifications: z.string().optional(),
+  specifications: z
+    .string()
+    .trim()
+    .transform((value) => value || undefined)
+    .optional(),
 
   imageUrl: z
     .string()
-    .url({
-      message: "Please enter a valid URL",
-    })
-    .optional(),
+    .trim()
+    .transform((value) => value || undefined)
+    .pipe(
+      z
+        .string()
+        .url({
+          message: "Please enter a valid URL",
+        })
+        .optional(),
+    ),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
 // =========================
-// Product Categories
+// Category Information
 // =========================
-
-type ProductCategory =
-  | "seeds"
-  | "fertilizers"
-  | "pesticides"
-  | "instruments";
 
 interface CategoryInfo {
   name: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   description: string;
   color: string;
 }
@@ -161,7 +181,7 @@ export default function CompanySell() {
     resolver: zodResolver(formSchema),
 
     defaultValues: {
-      category: activeTab,
+      category: "seeds",
       name: "",
       price: undefined,
       quantity: undefined,
@@ -173,14 +193,22 @@ export default function CompanySell() {
   });
 
   // =========================
-  // Tab Change
+  // Change Category
   // =========================
 
   const handleTabChange = (value: string) => {
-    const category = value as ProductCategory;
+    if (
+      !productCategories.includes(
+        value as ProductCategory,
+      )
+    ) {
+      return;
+    }
+
+    const category =
+      value as ProductCategory;
 
     setActiveTab(category);
-
     form.setValue("category", category);
   };
 
@@ -190,6 +218,7 @@ export default function CompanySell() {
 
   async function onSubmit(values: FormValues) {
     setIsSubmitting(true);
+    setIsSuccess(false);
 
     try {
       const response = await fetch(
@@ -202,37 +231,45 @@ export default function CompanySell() {
           },
 
           body: JSON.stringify({
-            // Temporary company ID for testing
             companyId: 1,
-
             category: values.category,
-
             name: values.name,
-
             price: values.price,
-
             quantity: values.quantity,
-
             description: values.description,
-
             manufacturer:
-              values.manufacturer || null,
-
+              values.manufacturer ?? null,
             specifications:
-              values.specifications || null,
-
+              values.specifications ?? null,
             imageUrl:
-              values.imageUrl || null,
+              values.imageUrl ?? null,
           }),
         },
       );
 
-      const data = await response.json();
+      const contentType =
+        response.headers.get("content-type") ?? "";
+
+      let data: any = null;
+
+      if (contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+
+        if (!response.ok) {
+          throw new Error(
+            text || "Failed to list product",
+          );
+        }
+
+        data = text;
+      }
 
       if (!response.ok) {
         throw new Error(
-          data.error ||
-            data.message ||
+          data?.error ||
+            data?.message ||
             "Failed to list product",
         );
       }
@@ -242,24 +279,21 @@ export default function CompanySell() {
         data,
       );
 
-      setIsSubmitting(false);
-
       setIsSuccess(true);
 
-      // Reset form after success
+      form.reset({
+        category: activeTab,
+        name: "",
+        price: undefined,
+        quantity: undefined,
+        description: "",
+        manufacturer: "",
+        specifications: "",
+        imageUrl: "",
+      });
+
       setTimeout(() => {
         setIsSuccess(false);
-
-        form.reset({
-          category: activeTab,
-          name: "",
-          price: undefined,
-          quantity: undefined,
-          description: "",
-          manufacturer: "",
-          specifications: "",
-          imageUrl: "",
-        });
       }, 3000);
     } catch (error) {
       console.error(
@@ -267,21 +301,23 @@ export default function CompanySell() {
         error,
       );
 
-      setIsSubmitting(false);
-
       alert(
         error instanceof Error
           ? error.message
           : "Failed to list product",
       );
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
+  // =========================
+  // Render
+  // =========================
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* =========================
-          Page Header
-      ========================= */}
+      {/* Page Header */}
 
       <div className="text-center mb-8">
         <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
@@ -294,19 +330,19 @@ export default function CompanySell() {
         </p>
       </div>
 
-      {/* =========================
-          Category Tabs
-      ========================= */}
+      {/* Category Tabs */}
 
       <Tabs
-        defaultValue="seeds"
         value={activeTab}
         onValueChange={handleTabChange}
         className="w-full"
       >
         <TabsList className="grid w-full grid-cols-4 mb-8">
-          {Object.entries(categoryData).map(
-            ([key, category]) => (
+          {productCategories.map((key) => {
+            const category =
+              categoryData[key];
+
+            return (
               <TabsTrigger
                 key={key}
                 value={key}
@@ -324,16 +360,17 @@ export default function CompanySell() {
                   </span>
                 </div>
               </TabsTrigger>
-            ),
-          )}
+            );
+          })}
         </TabsList>
 
-        {/* =========================
-            Category Content
-        ========================= */}
+        {/* Category Content */}
 
-        {Object.entries(categoryData).map(
-          ([key, category]) => (
+        {productCategories.map((key) => {
+          const category =
+            categoryData[key];
+
+          return (
             <TabsContent
               key={key}
               value={key}
@@ -360,9 +397,7 @@ export default function CompanySell() {
                 </CardHeader>
 
                 <CardContent>
-                  {/* =========================
-                      Success Message
-                  ========================= */}
+                  {/* Success Message */}
 
                   {isSuccess ? (
                     <div className="bg-green-50 dark:bg-green-900/20 p-6 rounded-lg flex items-center">
@@ -376,17 +411,13 @@ export default function CompanySell() {
                         </h3>
 
                         <p className="text-green-700 dark:text-green-400">
-                          Your product has been added to
-                          the marketplace and is now
-                          visible to farmers.
+                          Your product has been added
+                          to the marketplace and is
+                          now visible to farmers.
                         </p>
                       </div>
                     </div>
                   ) : (
-                    /* =========================
-                       Product Form
-                    ========================= */
-
                     <Form {...form}>
                       <form
                         onSubmit={form.handleSubmit(
@@ -433,6 +464,7 @@ export default function CompanySell() {
                                   <Input
                                     type="number"
                                     min={1}
+                                    step="any"
                                     placeholder="Enter price per unit"
                                     {...field}
                                   />
@@ -467,6 +499,7 @@ export default function CompanySell() {
                                   <Input
                                     type="number"
                                     min={1}
+                                    step="any"
                                     placeholder="Enter available quantity"
                                     {...field}
                                   />
@@ -559,9 +592,7 @@ export default function CompanySell() {
                           />
                         </div>
 
-                        {/* =========================
-                            Seeds
-                        ========================= */}
+                        {/* Seeds */}
 
                         {key === "seeds" && (
                           <div className="bg-card/50 p-4 rounded-lg">
@@ -572,7 +603,8 @@ export default function CompanySell() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div>
                                 <label className="text-sm font-medium mb-1 block">
-                                  Suitable Growing Regions
+                                  Suitable Growing
+                                  Regions
                                 </label>
 
                                 <div className="flex flex-wrap gap-2 mt-2">
@@ -658,14 +690,13 @@ export default function CompanySell() {
                           </div>
                         )}
 
-                        {/* =========================
-                            Fertilizers
-                        ========================= */}
+                        {/* Fertilizers */}
 
                         {key === "fertilizers" && (
                           <div className="bg-card/50 p-4 rounded-lg">
                             <h3 className="font-medium mb-3">
-                              Fertilizer-specific Information
+                              Fertilizer-specific
+                              Information
                             </h3>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -706,14 +737,13 @@ export default function CompanySell() {
                           </div>
                         )}
 
-                        {/* =========================
-                            Pesticides
-                        ========================= */}
+                        {/* Pesticides */}
 
                         {key === "pesticides" && (
                           <div className="bg-card/50 p-4 rounded-lg">
                             <h3 className="font-medium mb-3">
-                              Pesticide-specific Information
+                              Pesticide-specific
+                              Information
                             </h3>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -786,14 +816,13 @@ export default function CompanySell() {
                           </div>
                         )}
 
-                        {/* =========================
-                            Instruments
-                        ========================= */}
+                        {/* Instruments */}
 
                         {key === "instruments" && (
                           <div className="bg-card/50 p-4 rounded-lg">
                             <h3 className="font-medium mb-3">
-                              Equipment-specific Information
+                              Equipment-specific
+                              Information
                             </h3>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -865,9 +894,7 @@ export default function CompanySell() {
                           </div>
                         )}
 
-                        {/* =========================
-                            Submit
-                        ========================= */}
+                        {/* Submit */}
 
                         <div className="mt-6">
                           <Button
@@ -878,7 +905,7 @@ export default function CompanySell() {
                             disabled={isSubmitting}
                           >
                             {isSubmitting ? (
-                              <>Listing Product...</>
+                              "Listing Product..."
                             ) : (
                               <>
                                 <Plus className="mr-2 h-4 w-4" />
@@ -893,8 +920,8 @@ export default function CompanySell() {
                 </CardContent>
               </Card>
             </TabsContent>
-          ),
-        )}
+          );
+        })}
       </Tabs>
     </div>
   );

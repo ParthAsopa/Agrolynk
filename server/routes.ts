@@ -39,11 +39,9 @@ const createCompanyProductSchema = z.object({
 
   description: z.string().min(10),
 
-  manufacturer: z.string().optional(),
-
-  specifications: z.string().optional(),
-
-  imageUrl: z.string().url().optional(),
+ manufacturer: z.string().nullable().optional(),
+specifications: z.string().nullable().optional(),
+imageUrl: z.string().url().nullable().optional(),
 });
 
 const createCompanyOrderSchema = z.object({
