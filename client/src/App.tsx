@@ -1,3 +1,4 @@
+import Login from "@/pages/Login";
 import { Switch, Route } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
@@ -19,6 +20,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <MainLayout>
         <Switch>
+          <Route path="/login" component={Login} />
           <Route path="/" component={Home} />
           <Route path="/role-selection" component={RoleSelection} />
           <Route path="/farmer/options" component={FarmerOptions} />
