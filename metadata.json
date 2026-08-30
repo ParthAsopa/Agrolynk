@@ -1,0 +1,6 @@
+{
+  "name": "AgroLynk",
+  "description": "AI-Powered Agro Marketplace connecting farmers and companies with crop recommendations and market insights.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
