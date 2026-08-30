@@ -9,30 +9,51 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleLogin = (e: FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (e: FormEvent) => {
+  e.preventDefault();
 
-    setError("");
+  setError("");
 
-    if (!username.trim() || !password.trim()) {
-      setError("Please enter username and password.");
+  if (!username.trim() || !password.trim()) {
+    setError("Please enter username and password.");
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        username: username.trim(),
+        password,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setError(data.error || "Invalid username or password.");
       return;
     }
 
-    // Temporary login logic.
-    // We will replace this with PostgreSQL authentication next.
-    if (username === "farmer" && password === "farmer123") {
+    if (data.user.role === "farmer") {
       navigate("/farmer/options");
       return;
     }
 
-    if (username === "company" && password === "company123") {
+    if (data.user.role === "company") {
       navigate("/company/options");
       return;
     }
 
-    setError("Invalid username or password.");
-  };
+    setError("Unknown user role.");
+  } catch (error) {
+    console.error("Login error:", error);
+    setError("Unable to connect to the server.");
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
