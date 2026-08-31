@@ -1,9 +1,9 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
-
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
@@ -11,7 +11,7 @@ const app = express();
 // Security Headers
 app.use(
   helmet({
-    contentSecurityPolicy: false, // Disabled to prevent blocking inline Vite scripts / styles in development
+    contentSecurityPolicy: false, 
     crossOriginEmbedderPolicy: false,
   })
 );
@@ -21,10 +21,10 @@ app.use(cors());
 
 // Baseline rate limiter: 100 requests per 15 minutes for all API routes
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  windowMs: 15 * 60 * 1000, 
+  max: 100, 
+  standardHeaders: true, 
+  legacyHeaders: false, 
   message: {
     error: "Too many requests, please try again after 15 minutes.",
   },
@@ -34,7 +34,6 @@ const apiLimiter = rateLimit({
 app.use("/api", apiLimiter);
 
 app.use(express.json());
-
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
@@ -51,18 +50,14 @@ app.use((req, res, next) => {
 
   res.on("finish", () => {
     const duration = Date.now() - start;
-
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "…";
       }
-
       log(logLine);
     }
   });
@@ -96,7 +91,6 @@ app.use((req, res, next) => {
   server.listen({
     port,
     host: "0.0.0.0",
-    
   }, () => {
     log(`serving on port ${port}`);
   });
