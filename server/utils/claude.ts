@@ -1,57 +1,54 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+const apiKey = process.env.GEMINI_API_KEY;
+
+console.log(
+  "Gemini API Key:",
+  apiKey ? `Loaded (${apiKey.substring(0, 6)}...)` : "NOT FOUND"
+);
+
+const ai = new GoogleGenAI({
+  apiKey: apiKey || "",
 });
 
-export async function askClaude(prompt: string): Promise<string> {
-  // For development: if no API key is available,
-  // return a mock response instead of crashing.
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.warn("ANTHROPIC_API_KEY not found. Using mock response.");
+export async function askGemini(prompt: string): Promise<string> {
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY not found in .env");
+  }
 
-    if (prompt.includes("selling price recommendation")) {
-      return JSON.stringify({
-        recommendedPrice: 29,
-        priceRange: {
-          min: 27,
-          max: 31,
-        },
-        reason:
-          "Grade A produce with this quantity may attract better buyer offers.",
-      });
+  try {
+    console.log("Sending request to Gemini...");
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.6-flash",
+      contents: prompt,
+      config: {
+        temperature: 0.2,
+        responseMimeType: "application/json",
+      },
+    });
+
+    console.log("Gemini raw response received");
+
+    const text = response.text;
+
+    if (!text) {
+      throw new Error("Gemini returned no text response");
     }
 
-    return JSON.stringify({
-      matchScore: 94,
-      reasons: [
-        "Crop matches the company requirement",
-        "Quantity is sufficient",
-        "Quality matches the requirement",
-      ],
-      summary:
-        "This listing is a strong match based on crop, quantity and quality.",
-    });
+    console.log("Gemini Response:", text);
+
+    const cleanedText = text
+      .replace(/```json/gi, "")
+      .replace(/```/g, "")
+      .trim();
+
+    return cleanedText;
+  } catch (error) {
+    console.error("========== GEMINI API ERROR ==========");
+    console.error(error);
+    console.error("======================================");
+
+    throw error;
   }
-
-  const response = await anthropic.messages.create({
-    model: process.env.CLAUDE_MODEL || "claude-sonnet-4-5",
-    max_tokens: 500,
-    messages: [
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
-  });
-
-  const textBlock = response.content.find(
-    (block) => block.type === "text",
-  );
-
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("Claude returned no text response");
-  }
-
-  return textBlock.text;
 }
