@@ -6,11 +6,14 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import LanguageSelector from "./LanguageSelector";
 import Logo from "./Logo";
+import { LogoutButton } from "./LogoutButton";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [location] = useLocation();
   const { t } = useLanguage();
+  const { isAuthenticated } = useAuth();
   const navLinks = [
   { label: t.navigation.home, href: "/" },
   { label: t.navigation.about, href: "#about" },
@@ -57,10 +60,14 @@ export default function Navbar() {
             {/* Theme */}
             <ThemeToggle />
 
-            {/* Login */}
-            <Button asChild>
-            <a href="#login">{t.navigation.login}</a>
-            </Button>
+            {/* Authentication */}
+            {isAuthenticated ? (
+              <LogoutButton />
+            ) : (
+              <Button asChild>
+                <Link href="/login">{t.navigation.login}</Link>
+              </Button>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -109,9 +116,13 @@ export default function Navbar() {
 
               <ThemeToggle />
 
-              <Button asChild>
-                <Link href="/login">Login</Link>
-              </Button>
+              {isAuthenticated ? (
+                <LogoutButton />
+              ) : (
+                <Button asChild>
+                  <Link href="/login">Login</Link>
+                </Button>
+              )}
             </div>
 
           </div>

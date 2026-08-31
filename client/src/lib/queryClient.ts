@@ -12,12 +12,26 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  // Get JWT token from localStorage
+  const token = localStorage.getItem("authToken");
+  
+  const headers: HeadersInit = {
+    ...(data && { "Content-Type": "application/json" }),
+    ...(token && { "Authorization": `Bearer ${token}` }),
+  };
+
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
   });
+
+  // If unauthorized, clear token and you might want to redirect to login
+  if (res.status === 401) {
+    localStorage.removeItem("authToken");
+    // Optionally redirect to login page here
+    // window.location.href = "/login";
+  }
 
   await throwIfResNotOk(res);
   return res;
@@ -29,12 +43,24 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    // Get JWT token from localStorage
+    const token = localStorage.getItem("authToken");
+    
+    const headers: HeadersInit = token ? { "Authorization": `Bearer ${token}` } : {};
+
     const res = await fetch(queryKey[0] as string, {
-      credentials: "include",
+      headers,
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+      // Clear token if unauthorized
+      localStorage.removeItem("authToken");
       return null;
+    }
+
+    if (res.status === 401) {
+      // Clear token if unauthorized
+      localStorage.removeItem("authToken");
     }
 
     await throwIfResNotOk(res);
