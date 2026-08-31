@@ -1,10 +1,37 @@
 import "dotenv/config";
-
 import express, { type Request, Response, NextFunction } from "express";
+import helmet from "helmet";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+
+// Security Headers
+app.use(
+  helmet({
+    contentSecurityPolicy: false, 
+    crossOriginEmbedderPolicy: false,
+  })
+);
+
+// CORS for cross-origin requests
+app.use(cors());
+
+// Baseline rate limiter: 100 requests per 15 minutes for all API routes
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 100, 
+  standardHeaders: true, 
+  legacyHeaders: false, 
+  message: {
+    error: "Too many requests, please try again after 15 minutes.",
+  },
+});
+
+// Apply rate limiter to API routes
+app.use("/api", apiLimiter);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -23,18 +50,14 @@ app.use((req, res, next) => {
 
   res.on("finish", () => {
     const duration = Date.now() - start;
-
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "…";
       }
-
       log(logLine);
     }
   });
@@ -51,24 +74,24 @@ app.use((req, res, next) => {
       const message = err.message || "Internal Server Error";
 
       res.status(status).json({ message });
-    }
+      throw err;
+    },
   );
 
-  if (app.get("env") === "development") {
+  // importantly only setup vite in development and after
+  // setting up all the other routes so the catch-all route
+  // doesn't interfere with the other routes
+  if (process.env.NODE_ENV !== "production") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
   const port = 5000;
-
-  server.listen(
-    {
-      port,
-      host: "localhost",
-    },
-    () => {
-      log(`serving on port ${port}`);
-    }
-  );
+  server.listen({
+    port,
+    host: "0.0.0.0",
+  }, () => {
+    log(`serving on port ${port}`);
+  });
 })();
