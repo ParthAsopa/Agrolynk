@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, real, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -7,9 +7,12 @@ import { z } from "zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role").notNull().default("farmer"), // 'farmer' or 'company'
+  role: text("role").notNull().default("farmer"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 export const listings = pgTable("listings", {
   id: serial("id").primaryKey(),
@@ -50,6 +53,8 @@ export const offers = pgTable("offers", {
   status: text("status").notNull().default("pending"),
 });
 export const insertUserSchema = createInsertSchema(users).pick({
+  name: true,
+  email: true,
   username: true,
   password: true,
   role: true,

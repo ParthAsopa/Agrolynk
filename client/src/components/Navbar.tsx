@@ -110,7 +110,7 @@ export default function Navbar() {
               <ThemeToggle />
 
               <Button asChild>
-                <a href="#login">Login</a>
+                <Link href="/login">Login</Link>
               </Button>
             </div>
 

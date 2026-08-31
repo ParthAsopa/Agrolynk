@@ -1,3 +1,4 @@
+import Login from "@/pages/Login";
 import { Switch, Route } from "wouter";
 
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -36,55 +37,19 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <MainLayout>
           <Switch>
-            <Route
-              path="/farmer/dashboard"
-              component={FarmerDashboard}
-            />
-
-            <Route
-              path="/"
-              component={Home}
-            />
-
-            <Route
-              path="/role-selection"
-              component={RoleSelection}
-            />
-
-            <Route
-              path="/farmer/options"
-              component={FarmerOptions}
-            />
-
-            <Route
-              path="/farmer/buy"
-              component={FarmerBuy}
-            />
-
-            <Route
-              path="/farmer/sell"
-              component={FarmerSell}
-            />
-
-            <Route
-              path="/company/options"
-              component={CompanyOptions}
-            />
-
-            <Route
-              path="/company/buy"
-              component={CompanyBuy}
-            />
-
-            <Route
-              path="/company/sell"
-              component={CompanySell}
-            />
-
+            <Route path="/login" component={Login} />
+            <Route path="/farmer/dashboard" component={FarmerDashboard} />
+            <Route path="/" component={Home} />
+            <Route path="/role-selection" component={RoleSelection} />
+            <Route path="/farmer/options" component={FarmerOptions} />
+            <Route path="/farmer/buy" component={FarmerBuy} />
+            <Route path="/farmer/sell" component={FarmerSell} />
+            <Route path="/company/options" component={CompanyOptions} />
+            <Route path="/company/buy" component={CompanyBuy} />
+            <Route path="/company/sell" component={CompanySell} />
             <Route component={NotFound} />
           </Switch>
         </MainLayout>
-
         <Toaster />
       </QueryClientProvider>
     </LanguageProvider>
