@@ -87,7 +87,7 @@ export default function Navbar() {
             <div className="flex items-center justify-between pt-2 px-3">
               <ThemeToggle />
               <Button asChild>
-                <a href="#login">Login</a>
+                <Link href="/login">Login</Link>
               </Button>
             </div>
           </div>
